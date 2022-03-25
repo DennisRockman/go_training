@@ -149,4 +149,15 @@ func TestTop10(t *testing.T) {
 		require.Equal(t, expected, Top10(
 			`ровно, десять, разных слов один два три четыре пять шесть`))
 	})
+
+	t.Run("unicode check", func(t *testing.T) {
+		expected := []string{
+			"chápán",
+			"english",
+			"köşkler",
+			"русский",
+		}
+		require.Equal(t, expected, Top10(
+			`English, русский, chápán, köşkler`))
+	})
 }
