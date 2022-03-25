@@ -7,7 +7,7 @@ import (
 )
 
 // Change to true if needed.
-var taskWithAsteriskIsCompleted = false
+var taskWithAsteriskIsCompleted = true
 
 var text = `Как видите, он  спускается  по  лестнице  вслед  за  своим
 	другом   Кристофером   Робином,   головой   вниз,  пересчитывая
@@ -78,5 +78,75 @@ func TestTop10(t *testing.T) {
 			}
 			require.Equal(t, expected, Top10(text))
 		}
+	})
+
+	t.Run("words count < 10", func(t *testing.T) {
+		expected := []string{
+			"десяти",
+			"меньше",
+			"слов",
+			"число",
+		}
+		require.Equal(t, expected, Top10("Число Слов меньше десяти"))
+	})
+
+	t.Run("is not a word", func(t *testing.T) {
+		require.Len(t, Top10("-"), 0)
+	})
+
+	t.Run("is word", func(t *testing.T) {
+		expected := []string{
+			"как-нибудь",
+		}
+		require.Equal(t, expected, Top10("Как-нибудь"))
+	})
+
+	t.Run("punctuation check", func(t *testing.T) {
+		expected := []string{
+			"пух",
+		}
+		require.Equal(t, expected, Top10(
+			`Пух!
+				Пух:
+				!пух!
+				пух,
+				пух.
+				"пух"
+				ПУХ?`))
+	})
+
+	t.Run("numbers check", func(t *testing.T) {
+		expected := []string{
+			"89521231212",
+			"александр",
+			"дай",
+			"маша",
+			"номер",
+			"ответила",
+			"пожалуйста",
+			"попросил",
+			"свой",
+			"телефона",
+		}
+		require.Equal(t, expected, Top10(
+			`- Дай, пожалуйста, свой номер телефона, попросил Александр.
+				- 89521231212 - ответила Маша`))
+	})
+
+	t.Run("min function check", func(t *testing.T) {
+		expected := []string{
+			"два",
+			"десять",
+			"один",
+			"пять",
+			"разных",
+			"ровно",
+			"слов",
+			"три",
+			"четыре",
+			"шесть",
+		}
+		require.Equal(t, expected, Top10(
+			`ровно, десять, разных слов один два три четыре пять шесть`))
 	})
 }
