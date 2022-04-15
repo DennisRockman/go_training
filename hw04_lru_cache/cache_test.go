@@ -50,7 +50,66 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+		c := NewCache(5)
+		c.Set("2", 2)
+		c.Set("3", 3)
+		c.Set("4", 4)
+
+		val, ok := c.Get("2")
+		require.True(t, ok)
+		require.Equal(t, 2, val)
+
+		val, ok = c.Get("3")
+		require.True(t, ok)
+		require.Equal(t, 3, val)
+
+		c.Clear()
+		val, ok = c.Get("2")
+		require.False(t, ok)
+		require.Nil(t, val)
+
+		val, ok = c.Get("3")
+		require.False(t, ok)
+		require.Nil(t, val)
+	})
+
+	t.Run("out from cache (set)", func(t *testing.T) {
+		c := NewCache(3)
+		c.Set("1", 1)
+		c.Set("2", 2)
+		c.Set("3", 3)
+		val, ok := c.Get("3")
+		require.True(t, ok)
+		require.Equal(t, val, 3)
+
+		c.Set("4", 4)
+		val, ok = c.Get("1")
+		require.False(t, ok)
+		require.Nil(t, val)
+	})
+
+	t.Run("out from cache (get & set)", func(t *testing.T) {
+		c := NewCache(3)
+		c.Set("2", 2)
+		c.Set("3", 3)
+		ok := c.Set("4", 4)
+		require.False(t, ok)
+
+		c.Get("2")
+		c.Get("3")
+		c.Set("5", 5)
+		val, isOk := c.Get("4")
+		require.False(t, isOk)
+		require.Nil(t, val)
+	})
+
+	t.Run("set twice", func(t *testing.T) {
+		c := NewCache(2)
+		c.Set("2", 2)
+		c.Set("2", 3)
+		val, ok := c.Get("2")
+		require.True(t, ok)
+		require.Equal(t, 3, val)
 	})
 }
 
