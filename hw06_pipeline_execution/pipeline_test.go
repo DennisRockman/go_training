@@ -18,11 +18,16 @@ func TestPipeline(t *testing.T) {
 	g := func(_ string, f func(v interface{}) interface{}) Stage {
 		return func(in In) Out {
 			out := make(Bi)
+			done := DoneChannel()
 			go func() {
 				defer close(out)
 				for v := range in {
-					time.Sleep(sleepPerStage)
-					out <- f(v)
+					require.Eventually(t, func() bool { return true }, sleepPerStage+time.Second, sleepPerStage)
+					select {
+					case <-done:
+						return
+					case out <- f(v):
+					}
 				}
 			}()
 			return out

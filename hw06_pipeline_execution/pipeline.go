@@ -8,7 +8,18 @@ type (
 
 type Stage func(in In) (out Out)
 
+var doneChan = make(In)
+
+func DoneChannel() In {
+	return doneChan
+}
+
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
-	// Place your code here.
-	return nil
+	doneChan = done
+
+	for _, stage := range stages {
+		in = stage(in)
+	}
+
+	return in // last result channel on runtime here
 }
