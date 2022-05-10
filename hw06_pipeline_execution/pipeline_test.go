@@ -18,11 +18,29 @@ func TestPipeline(t *testing.T) {
 	g := func(_ string, f func(v interface{}) interface{}) Stage {
 		return func(in In) Out {
 			out := make(Bi)
+
+			// Из способов закрыть горутину знаю только этот
+			// Позволить ей слушать сигнальный канал, операция чтенния на нем будет блокирующей потому что туда никто не пишет
+			// В момент закрытия сигнального канала - чтение из него разблокируется,
+			//- срабатывает select -> return -> defer -> close(out)
+			// горутина завершает работу и закрывает свой канал с данными
+			// в следующем stage инструкция for v := range in { прерывается так как канал in закрыт в предыдущем stage
+
+			// получаем глобальный сигнальный канал
 			done := DoneChannel()
+
+			// Если это решение неверно - пробовал также слушать и закрывать доступный канал out в качестве сигнального
+			// но это опасно - так как можно попасть на ситуацию когда будем пробовать писать в закрытый канал out
+
+			// Даже с таким  решением тест "done case" срабатывает через раз :(
+			// Время закрытия пайплана через раз получается больше ожидаемого
+			// Что я принципиально делаю не так ? ...
+
 			go func() {
 				defer close(out)
 				for v := range in {
-					require.Eventually(t, func() bool { return true }, sleepPerStage+time.Second, sleepPerStage)
+					time.Sleep(sleepPerStage)
+					//require.Eventually(t, func() bool { return true }, sleepPerStage+time.Second, sleepPerStage)
 					select {
 					case <-done:
 						return
