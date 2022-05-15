@@ -8,26 +8,45 @@ type (
 
 type Stage func(in In) (out Out)
 
-// приватная глобальная переменная для возврата сигнального канала внутрь горутин-стейджей
-var doneChan = make(In)
-
-// DoneChannel использую функцию чтобы не обращаться к приватной переменной напрямую
-func DoneChannel() In {
-	return doneChan
-}
-
-// ExecutePipeline Пайплан - это цепочка стейджей, выполняемых в горутинах и связанных через каналы.
-// Результат выполнения текущего стейджа - это канал с данными для следующего стейджа.
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
-	// складываем в глобальную переменную done канал текущего пайплайна
-	doneChan = done
-
-	// связываем стейджи через каналы последовательно. результат текущего стейджа - это входной канал с данными для
-	// следующего стейджа. Получается на момент запуска планировщика все стейджи связаны через каналы, так как функция
-	// stage неблокирующая и сразу возвращает канал
-	for _, stage := range stages {
-		in = stage(in)
+	if len(stages) == 0 {
+		in = link(in, done)
 	}
 
-	return in // в рантайме здесь последний канал, куда будут записываться результаты последнего стейджа
+	for _, stage := range stages {
+		if stage != nil {
+			in = stage(link(in, done))
+		}
+	}
+	return in
+}
+
+func link(in In, done In) Bi {
+	out := make(Bi)
+	go func() {
+		defer func() {
+			close(out)
+			for range in {
+			}
+		}()
+
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			select {
+			case <-done:
+				return
+			case v, ok := <-in:
+				if !ok {
+					return
+				}
+				out <- v
+			}
+		}
+	}()
+	return out
 }

@@ -18,34 +18,11 @@ func TestPipeline(t *testing.T) {
 	g := func(_ string, f func(v interface{}) interface{}) Stage {
 		return func(in In) Out {
 			out := make(Bi)
-
-			// Из способов закрыть горутину знаю только этот
-			// Позволить ей слушать сигнальный канал, операция чтенния на нем будет блокирующей потому что туда никто не пишет
-			// В момент закрытия сигнального канала - чтение из него разблокируется,
-			//- срабатывает select -> return -> defer -> close(out)
-			// горутина завершает работу и закрывает свой канал с данными
-			// в следующем stage инструкция for v := range in { прерывается так как канал in закрыт в предыдущем stage
-
-			// получаем глобальный сигнальный канал
-			done := DoneChannel()
-
-			// Если это решение неверно - пробовал также слушать и закрывать доступный канал out в качестве сигнального
-			// но это опасно - так как можно попасть на ситуацию когда будем пробовать писать в закрытый канал out
-
-			// Даже с таким  решением тест "done case" срабатывает через раз :(
-			// Время закрытия пайплана через раз получается больше ожидаемого
-			// Что я принципиально делаю не так ? ...
-
 			go func() {
 				defer close(out)
 				for v := range in {
 					time.Sleep(sleepPerStage)
-					//require.Eventually(t, func() bool { return true }, sleepPerStage+time.Second, sleepPerStage)
-					select {
-					case <-done:
-						return
-					case out <- f(v):
-					}
+					out <- f(v)
 				}
 			}()
 			return out
@@ -63,12 +40,7 @@ func TestPipeline(t *testing.T) {
 		in := make(Bi)
 		data := []int{1, 2, 3, 4, 5}
 
-		go func() {
-			for _, v := range data {
-				in <- v
-			}
-			close(in)
-		}()
+		go initData(in, data)
 
 		result := make([]string, 0, 10)
 		start := time.Now()
@@ -96,12 +68,7 @@ func TestPipeline(t *testing.T) {
 			close(done)
 		}()
 
-		go func() {
-			for _, v := range data {
-				in <- v
-			}
-			close(in)
-		}()
+		go initData(in, data)
 
 		result := make([]string, 0, 10)
 		start := time.Now()
@@ -113,4 +80,54 @@ func TestPipeline(t *testing.T) {
 		require.Len(t, result, 0)
 		require.Less(t, int64(elapsed), int64(abortDur)+int64(fault))
 	})
+
+	t.Run("without stages", func(t *testing.T) {
+		in := make(Bi)
+		data := []int{1, 2, 3, 4, 5}
+
+		go initData(in, data)
+
+		result := make([]int, 0, 10)
+		for v := range ExecutePipeline(in, nil) {
+			result = append(result, v.(int))
+		}
+
+		require.Equal(t, data, result)
+	})
+
+	t.Run("without stages - done case", func(t *testing.T) {
+		in := make(Bi)
+		done := make(Bi)
+		data := []int{1, 2, 3, 4, 5}
+
+		go initData(in, data)
+
+		result := make([]int, 0, 10)
+		for v := range ExecutePipeline(in, done) {
+			result = append(result, v.(int))
+		}
+
+		require.Equal(t, data, result)
+	})
+
+	t.Run("nil stage", func(t *testing.T) {
+		in := make(Bi)
+		data := []int{1, 2, 3, 4, 5}
+
+		go initData(in, data)
+
+		result := make([]int, 0, 10)
+		for v := range ExecutePipeline(in, nil, nil) {
+			result = append(result, v.(int))
+		}
+
+		require.Equal(t, data, result)
+	})
+}
+
+func initData(in Bi, data []int) {
+	for _, v := range data {
+		in <- v
+	}
+	close(in)
 }
