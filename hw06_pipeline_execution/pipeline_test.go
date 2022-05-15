@@ -32,11 +32,13 @@ func TestPipeline(t *testing.T) {
 	stages := []Stage{
 		g("Dummy", func(v interface{}) interface{} { return v }),
 		g("Multiplier (* 2)", func(v interface{}) interface{} { return v.(int) * 2 }),
+		nil,
 		g("Adder (+ 100)", func(v interface{}) interface{} { return v.(int) + 100 }),
+		nil,
 		g("Stringifier", func(v interface{}) interface{} { return strconv.Itoa(v.(int)) }),
 	}
 
-	t.Run("simple case", func(t *testing.T) {
+	t.Run("simple case, nil stages", func(t *testing.T) {
 		in := make(Bi)
 		data := []int{1, 2, 3, 4, 5}
 
