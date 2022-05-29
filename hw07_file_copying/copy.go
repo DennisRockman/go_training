@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/cheggaaa/pb/v3"
+	"github.com/cheggaaa/pb"
 )
 
 var (
@@ -50,7 +50,8 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		limit = sourceFileSize - offset
 	}
 
-	bar := pb.Full.Start64(limit)
+	bar := pb.New64(sourceFileSize).SetUnits(pb.U_BYTES)
+	bar.Start()
 	barReader := bar.NewProxyReader(srcFile)
 	if _, err = io.CopyN(dstFile, barReader, limit); err != nil {
 		return err
